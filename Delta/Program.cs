@@ -7,6 +7,10 @@ using DeltaPatching;
 using DeltaPatching.Util;
 using System.IO;
 
+/* 
+ * This is a play around project for development testing and by no means reflects the final product.
+*/
+
 namespace Delta
 {
     class Program
