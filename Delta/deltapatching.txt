@@ -1,0 +1,10 @@
+--- [IDEA] ---
+
+--- [TODO] ---
+* Calculate hash locally on all (addon) files before checking server
+* Have identical list between server and client and simply match each line in list for discrepencies (eg. file_name.pbo:computedMD5hash)
+
+--- [IN-PROGRESS] ---
+
+--- [DONE] ---
+* Calculate MD5 hash of a local file
