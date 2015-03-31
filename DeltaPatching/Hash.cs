@@ -1,4 +1,9 @@
-﻿using System;
+﻿/*
+ * @author: Jonathan "Pwnoz0r" Rainier
+ * @description: Compare generated local and remote differences and return the results into a Dictionary (KeyValuePair);
+ * @license: Copyright 2015 Jonathan "Pwnoz0r" Rainier
+*/
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -41,10 +46,13 @@ namespace DeltaPatching
         /// <param name="path">Path to directory</param>
         /// <param name="fileFilter">File filter. * is an all file wildcard (default): fileFilter = "*.dll". Multiple wildcards can be used: fileFilter = "*.exe,*.dll"</param>
         /// <returns>Compiled list of all file names and their hashes.</returns>
-        public static List<string> GenerateHashFilesInDirectory(string path, string fileFilter = "*")
+        public static List<string> GenerateHashFilesInDirectory(string path, string outputFolder, string fileFilter = "*")
         {
             string[] files = Directory.GetFiles(path);
             List<string> compiledList = new List<string>();
+
+            if (!Directory.Exists(Config.DirectoryOutput))
+                Directory.CreateDirectory(Config.DirectoryOutput);
 
             foreach (string fileName in files)
             {
@@ -56,10 +64,18 @@ namespace DeltaPatching
                             compiledList.Add(string.Format("{0}:{1}", Path.GetFileName(fileName), GenerateHash(fileName)));
             }
 
-            Console.WriteLine(string.Format("{0}.txt", Path.GetDirectoryName(path)));
+            string hashPath = Path.GetDirectoryName(path);
+            int index = hashPath.LastIndexOf(@"\");
+            if (index != -1)
+                hashPath = hashPath.Substring(index).TrimStart('\\');
+
+            string hashListPath = Path.Combine(outputFolder, string.Format("{0}.txt", hashPath));
+
+            if (File.Exists(hashListPath))
+                File.Delete(hashListPath);
 
             foreach (string s in compiledList)
-                using (StreamWriter sw = new StreamWriter(Path.Combine(Config.DirectoryCurrent, string.Format("{0}.txt", Path.GetDirectoryName(path))), true))
+                using (StreamWriter sw = new StreamWriter(hashListPath, true))
                     sw.WriteLine(s);
 
             return compiledList;
@@ -71,11 +87,13 @@ namespace DeltaPatching
         /// <param name="localHashFile">File path to your local hash file.</param>
         /// <param name="remoteHashFile">URL (preferably *.txt) to your remote hash file.</param>
         /// <returns>List containing strings of the two file differences.</returns>
-        public static List<string> CompareHash(string localHashFile, string remoteHashFile)
+        public static Dictionary<string, string> CompareHash(string localHashFile, string remoteHashFile)
         {
             List<string> d1 = new List<string>();
             List<string> d2 = new List<string>();
-            List<string> differences = new List<string>();
+            List<string> remoteDifferences = new List<string>();
+            List<string> clientDifferences = new List<string>();
+            Dictionary<string, string> allDiff = new Dictionary<string, string>();
 
             using (StringReader r = new StringReader(GetLocalHash(localHashFile)))
             {
@@ -91,18 +109,26 @@ namespace DeltaPatching
                     d2.Add(line);
             }
 
-            foreach (string s in d2.Except(d1).ToList())
-                Console.WriteLine(string.Format("DIFF: {0}", s));
+            remoteDifferences = d2.Except(d1).ToList();
+            clientDifferences = d1.Except(d2).ToList();
 
-            return d2.Except(d1).ToList();
+            // R = REMOTE : C = CLIENT
+            foreach (string s in remoteDifferences)
+                allDiff.Add(s, "R");
+            foreach (string s in clientDifferences)
+                allDiff.Add(s, "C");
+
+            return allDiff;
         }
 
-        private static string GetLocalHash(string file)
+        public static string GetLocalHash(string file)
         {
+            if (!File.Exists(file))
+                File.Create(file).Close();
             return File.ReadAllText(file);
         }
 
-        private static string GetRemoteHash(string url)
+        public static string GetRemoteHash(string url)
         {
             string contentsRemote = "";
             using (WebClient wc = new WebClient())

@@ -32,20 +32,25 @@ namespace Delta
 
                                 if (!string.IsNullOrEmpty(args[0]))
                                     if (Directory.Exists(args[0]))
-                                        Hash.GenerateHashFilesInDirectory(args[0]);
+                                        Hash.GenerateHashFilesInDirectory(args[0], Config.DirectoryOutput);
                                     else
-                                        foreach (string s in Hash.CompareHash(args[0], args[1]))
-                                            Console.WriteLine(s);
+                                        foreach (KeyValuePair<string, string> s in Hash.CompareHash(args[0], args[1]))
+                                            Console.WriteLine(string.Format("{0}^{1}", s.Key, s.Value));
                             }
                             break;
                         default:
                             if (!string.IsNullOrEmpty(args[0]))
                                 if (Directory.Exists(args[0]))
-                                    Hash.GenerateHashFilesInDirectory(args[0], "*.pbo,*.bisign");
+                                    Hash.GenerateHashFilesInDirectory(args[0], Config.DirectoryOutput);
                             break;
                     }
                 }
             }
+
+            /* Example usage of CompareHash
+            foreach (KeyValuePair<string, string> s in Hash.CompareHash(localFilePath, remoteFileURL))
+                Console.WriteLine(string.Format("{0}^{1}", s.Key, s.Value));
+            */
 
             // START DEBUG
             Console.WriteLine("Finished... press any key to continue!");
