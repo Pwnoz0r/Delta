@@ -48,11 +48,12 @@ namespace DeltaPatching
         /// <returns>Compiled list of all file names and their hashes.</returns>
         public static List<string> GenerateHashFilesInDirectory(string path, string outputFolder, string fileFilter = "*")
         {
-            string[] files = Directory.GetFiles(path);
-            List<string> compiledList = new List<string>();
-
+            Config.DirectoryOutput = path;
             if (!Directory.Exists(Config.DirectoryOutput))
                 Directory.CreateDirectory(Config.DirectoryOutput);
+
+            string[] files = Directory.GetFiles(path);
+            List<string> compiledList = new List<string>();
 
             foreach (string fileName in files)
             {
