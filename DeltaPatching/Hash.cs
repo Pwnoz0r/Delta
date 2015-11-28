@@ -8,10 +8,9 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Security.Cryptography;
-using System.Text;
-using System.Threading.Tasks;
-using DeltaPatching.Util;
 using System.Net;
+using DeltaPatching.Util;
+// ReSharper disable LoopCanBeConvertedToQuery
 
 namespace DeltaPatching
 {
@@ -25,17 +24,18 @@ namespace DeltaPatching
         /// <returns>Filename and hash in the following format: "filename:hash"</returns>
         public static string GenerateHash(string file, bool outputFile = false)
         {
-            string computedHash = "";
+            string computedHash;
 
             using (var md5 = MD5.Create())
                 using (var fileStream = File.OpenRead(file))
                     computedHash = BitConverter.ToString(md5.ComputeHash(fileStream)).Replace("-", "").ToLower();
 
-            Console.WriteLine(string.Format("{0}:{1}", Path.GetFileName(file), computedHash));
+            Console.WriteLine($"{Path.GetFileName(file)}:{computedHash}");
 
-            if (outputFile)
-                using (StreamWriter sw = new StreamWriter(Path.Combine(Config.DirectoryOutput, string.Format("{0}.md5", Path.GetFileName(file)))))
-                    sw.Write(computedHash);
+            if (!outputFile) return computedHash;
+            using (var sw = new StreamWriter(Path.Combine(Config.DirectoryOutput,
+                $"{Path.GetFileName(file)}.md5")))
+                sw.Write(computedHash);
 
             return computedHash;
         }
@@ -44,6 +44,7 @@ namespace DeltaPatching
         /// Generate hash of a given directory.
         /// </summary>
         /// <param name="path">Path to directory</param>
+        /// <param name="outputFolder"></param>
         /// <param name="fileFilter">File filter. * is an all file wildcard (default): fileFilter = "*.dll". Multiple wildcards can be used: fileFilter = "*.exe,*.dll"</param>
         /// <returns>Compiled list of all file names and their hashes.</returns>
         public static List<string> GenerateHashFilesInDirectory(string path, string outputFolder, string fileFilter = "*")
@@ -52,31 +53,35 @@ namespace DeltaPatching
             if (!Directory.Exists(Config.DirectoryOutput))
                 Directory.CreateDirectory(Config.DirectoryOutput);
 
-            string[] files = Directory.GetFiles(path);
-            List<string> compiledList = new List<string>();
+            var files = Directory.GetFiles(path);
+            var compiledList = new List<string>();
 
-            foreach (string fileName in files)
+            foreach (var fileName in files)
             {
                 if (fileFilter == "*")
-                    compiledList.Add(string.Format("{0}:{1}", Path.GetFileName(fileName), GenerateHash(fileName)));
+                    compiledList.Add($"{Path.GetFileName(fileName)}:{GenerateHash(fileName)}");
                 else
-                    foreach (string filter in fileFilter.Split(','))
-                        if (Path.GetExtension(fileName).Contains(filter.TrimStart('*')))
-                            compiledList.Add(string.Format("{0}:{1}", Path.GetFileName(fileName), GenerateHash(fileName)));
+                    compiledList.AddRange(from filter in fileFilter.Split(',') let extension = Path.GetExtension(fileName) where extension != null && extension.Contains(filter.TrimStart('*')) select $"{Path.GetFileName(fileName)}:{GenerateHash(fileName)}");
             }
 
-            string hashPath = Path.GetDirectoryName(path);
-            int index = hashPath.LastIndexOf(@"\");
-            if (index != -1)
-                hashPath = hashPath.Substring(index).TrimStart('\\');
+            if (path != null && path.Contains('\\'))
+            {
+                    var index = path.LastIndexOf(@"\", StringComparison.Ordinal);
+                    if (index != -1)
+                        path = path.Substring(index).TrimStart('\\');
+            }
 
-            string hashListPath = Path.Combine(outputFolder, string.Format("{0}.txt", hashPath));
+            var hashListPath = Path.Combine(outputFolder, $"{path}.txt");
 
             if (File.Exists(hashListPath))
                 File.Delete(hashListPath);
 
-            foreach (string s in compiledList)
-                using (StreamWriter sw = new StreamWriter(hashListPath, true))
+            var rawPath = Path.GetDirectoryName(hashListPath);
+            if (rawPath != null && !Directory.Exists(rawPath))
+                Directory.CreateDirectory(rawPath);
+
+            foreach (var s in compiledList)
+                using (var sw = new StreamWriter(hashListPath, true))
                     sw.WriteLine(s);
 
             return compiledList;
@@ -90,33 +95,31 @@ namespace DeltaPatching
         /// <returns>List containing strings of the two file differences.</returns>
         public static Dictionary<string, string> CompareHash(string localHashFile, string remoteHashFile)
         {
-            List<string> d1 = new List<string>();
-            List<string> d2 = new List<string>();
-            List<string> remoteDifferences = new List<string>();
-            List<string> clientDifferences = new List<string>();
-            Dictionary<string, string> allDiff = new Dictionary<string, string>();
+            var d1 = new List<string>();
+            var d2 = new List<string>();
+            var allDiff = new Dictionary<string, string>();
 
-            using (StringReader r = new StringReader(GetLocalHash(localHashFile)))
+            using (var r = new StringReader(GetLocalHash(localHashFile)))
             {
                 string line;
                 while ((line = r.ReadLine()) != null)
                     d1.Add(line);
             }
 
-            using (StringReader r = new StringReader(GetRemoteHash(remoteHashFile)))
+            using (var r = new StringReader(GetRemoteHash(remoteHashFile)))
             {
                 string line;
                 while ((line = r.ReadLine()) != null)
                     d2.Add(line);
             }
 
-            remoteDifferences = d2.Except(d1).ToList();
-            clientDifferences = d1.Except(d2).ToList();
+            var remoteDifferences = d2.Except(d1).ToList();
+            var clientDifferences = d1.Except(d2).ToList();
 
             // R = REMOTE : C = CLIENT
-            foreach (string s in remoteDifferences)
+            foreach (var s in remoteDifferences)
                 allDiff.Add(s, "R");
-            foreach (string s in clientDifferences)
+            foreach (var s in clientDifferences)
                 allDiff.Add(s, "C");
 
             return allDiff;
@@ -131,8 +134,8 @@ namespace DeltaPatching
 
         public static string GetRemoteHash(string url)
         {
-            string contentsRemote = "";
-            using (WebClient wc = new WebClient())
+            string contentsRemote;
+            using (var wc = new WebClient())
             {
                 wc.Proxy = null;
                 contentsRemote = wc.DownloadString(url);
