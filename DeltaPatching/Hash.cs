@@ -43,17 +43,18 @@ namespace DeltaPatching
         /// <summary>
         /// Generate hash of a given directory.
         /// </summary>
-        /// <param name="path">Path to directory</param>
-        /// <param name="outputFolder"></param>
+        /// <param name="path">Directory to be hashed</param>
+        /// <param name="outputFolder">Directory that the hash.txt file will write to.</param>
         /// <param name="fileFilter">File filter. * is an all file wildcard (default): fileFilter = "*.dll". Multiple wildcards can be used: fileFilter = "*.exe,*.dll"</param>
+        /// <param name="includeSubDirectories">Boolean to include perform hashing recursively.</param>
         /// <returns>Compiled list of all file names and their hashes.</returns>
-        public static List<string> GenerateHashFilesInDirectory(string path, string outputFolder, string fileFilter = "*")
+        public static List<string> GenerateHashFilesInDirectory(string path, string outputFolder, string fileFilter = "*", bool includeSubDirectories = false)
         {
             Config.DirectoryOutput = path;
             if (!Directory.Exists(Config.DirectoryOutput))
                 Directory.CreateDirectory(Config.DirectoryOutput);
 
-            var files = Directory.GetFiles(path);
+            var files = includeSubDirectories ? (Directory.GetFiles(path, "*.*", SearchOption.AllDirectories)).ToList() : (Directory.GetFiles(path)).ToList();
             var compiledList = new List<string>();
 
             foreach (var fileName in files)

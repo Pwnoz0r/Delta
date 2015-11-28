@@ -37,7 +37,7 @@ namespace Delta
                         default:
                             if (!string.IsNullOrEmpty(args[0]))
                                 if (Directory.Exists(args[0]))
-                                    Hash.GenerateHashFilesInDirectory(args[0], Config.DirectoryOutput);
+                                    Hash.GenerateHashFilesInDirectory(args[0], Config.DirectoryOutput, "*", true);
                             break;
                     }
                 }
