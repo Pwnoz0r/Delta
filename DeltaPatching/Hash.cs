@@ -9,13 +9,16 @@ using System.IO;
 using System.Linq;
 using System.Security.Cryptography;
 using System.Net;
-using DeltaPatching.Util;
+using System.Text.RegularExpressions;
 // ReSharper disable LoopCanBeConvertedToQuery
 
 namespace DeltaPatching
 {
     public class Hash
     {
+        public static string DirectoryCurrent => Directory.GetCurrentDirectory();
+        public static string DirectoryOutput = Path.Combine(DirectoryCurrent, "Output");
+
         /// <summary>
         /// Generate a hash from the given file path.
         /// </summary>
@@ -33,8 +36,7 @@ namespace DeltaPatching
             Console.WriteLine($"{Path.GetFileName(file)}:{computedHash}");
 
             if (!outputFile) return computedHash;
-            using (var sw = new StreamWriter(Path.Combine(Config.DirectoryOutput,
-                $"{Path.GetFileName(file)}.md5")))
+            using (var sw = new StreamWriter(Path.Combine(DirectoryOutput, $"{Path.GetFileName(file)}.md5")))
                 sw.Write(computedHash);
 
             return computedHash;
@@ -50,26 +52,48 @@ namespace DeltaPatching
         /// <returns>Compiled list of all file names and their hashes.</returns>
         public static List<string> GenerateHashFilesInDirectory(string path, string outputFolder, string fileFilter = "*", bool includeSubDirectories = false)
         {
-            Config.DirectoryOutput = path;
-            if (!Directory.Exists(Config.DirectoryOutput))
-                Directory.CreateDirectory(Config.DirectoryOutput);
+            DirectoryOutput = path;
+            if (!Directory.Exists(DirectoryOutput))
+                Directory.CreateDirectory(DirectoryOutput);
 
             var files = includeSubDirectories ? (Directory.GetFiles(path, "*.*", SearchOption.AllDirectories)).ToList() : (Directory.GetFiles(path)).ToList();
             var compiledList = new List<string>();
 
-            foreach (var fileName in files)
-            {
-                if (fileFilter == "*")
-                    compiledList.Add($"{Path.GetFileName(fileName)}:{GenerateHash(fileName)}");
-                else
-                    compiledList.AddRange(from filter in fileFilter.Split(',') let extension = Path.GetExtension(fileName) where extension != null && extension.Contains(filter.TrimStart('*')) select $"{Path.GetFileName(fileName)}:{GenerateHash(fileName)}");
-            }
-
             if (path != null && path.Contains('\\'))
             {
-                    var index = path.LastIndexOf(@"\", StringComparison.Ordinal);
-                    if (index != -1)
-                        path = path.Substring(index).TrimStart('\\');
+                var index = path.LastIndexOf(@"\", StringComparison.Ordinal);
+                if (index != -1)
+                    path = path.Substring(index).TrimStart('\\');
+            }
+
+            var rootPath = path;
+
+            foreach (var fileName in files)
+            {
+                if (path == null) continue;
+
+                var folderStructure = Regex.Split(fileName, rootPath)[1];
+                var case1 = $"{Path.GetFileName(fileName)}";
+                var case2 = $@"{Regex.Split(fileName, rootPath)[1].TrimStart('\\')}";
+
+                if (fileFilter == "*")
+                {
+                    var set = folderStructure.Trim('\\') == Path.GetFileName(fileName) ? $"{case1}:{GenerateHash(fileName)}" : $"{case2}:{GenerateHash(fileName)}";
+                    compiledList.Add(set);
+                }
+                else
+                {
+                    foreach(var filter in fileFilter.Split(','))
+                    {
+                        var extension = Path.GetExtension(fileName);
+
+                        if (extension == null || !extension.Contains(filter.TrimStart('*'))) continue;
+
+                        var set = folderStructure.Trim('\\') == Path.GetFileName(fileName) ? $"{case1}:{GenerateHash(fileName)}" : $"{case2}:{GenerateHash(fileName)}";
+
+                        compiledList.Add(set);
+                    }
+                }
             }
 
             var hashListPath = Path.Combine(outputFolder, $"{path}.txt");

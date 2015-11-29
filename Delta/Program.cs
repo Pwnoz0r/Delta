@@ -1,7 +1,6 @@
 ﻿using System;
 using System.IO;
 using DeltaPatching;
-using DeltaPatching.Util;
 
 /* 
  * This is a play around project for development testing and by no means reflects the final product.
@@ -11,7 +10,6 @@ namespace Delta
 {
     class Program
     {
-        public static Config Config = new Config();
         static void Main(string[] args)
         {
             if (args != null && args.Length > 0)
@@ -28,7 +26,7 @@ namespace Delta
 
                                 if (!string.IsNullOrEmpty(args[0]))
                                     if (Directory.Exists(args[0]))
-                                        Hash.GenerateHashFilesInDirectory(args[0], Config.DirectoryOutput);
+                                        Hash.GenerateHashFilesInDirectory(args[0], Hash.DirectoryOutput);
                                     else
                                         foreach (var s in Hash.CompareHash(args[0], args[1]))
                                             Console.WriteLine($"{s.Key}^{s.Value}");
@@ -37,7 +35,7 @@ namespace Delta
                         default:
                             if (!string.IsNullOrEmpty(args[0]))
                                 if (Directory.Exists(args[0]))
-                                    Hash.GenerateHashFilesInDirectory(args[0], Config.DirectoryOutput, "*", true);
+                                    Hash.GenerateHashFilesInDirectory(args[0], Hash.DirectoryOutput, "*", true);
                             break;
                     }
                 }
